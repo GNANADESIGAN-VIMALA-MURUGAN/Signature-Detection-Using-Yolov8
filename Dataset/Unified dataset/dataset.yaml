@@ -1,0 +1,6 @@
+
+train: C:\Users\gnana\OneDrive\Desktop\CLG PROJECTS\YOLOV8\Dataset\Unified dataset\images\train
+val: C:\Users\gnana\OneDrive\Desktop\CLG PROJECTS\YOLOV8\Dataset\Unified dataset\images\val
+
+nc: 5  # Number of classes
+names: ['Babu','Gokul','Haran','JebaAnish','RajaLakshmi']    # Class names
