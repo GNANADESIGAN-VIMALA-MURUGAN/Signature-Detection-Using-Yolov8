@@ -1,83 +1,3 @@
-# import os
-# import random
-# import shutil
-# from tkinter import Tk, filedialog
-
-# # Step 1: Use tkinter to let the user select directories
-# def select_directory(title):
-#     """Open a dialog to select a directory."""
-#     root = Tk()
-#     root.withdraw()  # Hide the main tkinter window
-#     directory = filedialog.askdirectory(title=title)
-#     if not directory:
-#         raise ValueError("No directory selected. Exiting.")
-#     return directory
-
-# print("Please select the directory containing your images.")
-# IMAGES_DIR = select_directory("Select Images Directory")
-
-# print("Please select the directory containing your labels.")
-# LABELS_DIR = select_directory("Select Labels Directory")
-
-# print("Please select the directory where you want to save the organized dataset.")
-# OUTPUT_DIR = select_directory("Select Output Directory")
-
-# # Constants
-# TRAIN_RATIO = 0.8  # 80% for training, 20% for validation
-# CLASS_NAMES = ["signature"]  # Replace with your actual class names
-
-# # Step 2: Create output directory structure
-# try:
-#     os.makedirs(os.path.join(OUTPUT_DIR, "images", "train"), exist_ok=True)
-#     os.makedirs(os.path.join(OUTPUT_DIR, "images", "val"), exist_ok=True)
-#     os.makedirs(os.path.join(OUTPUT_DIR, "labels", "train"), exist_ok=True)
-#     os.makedirs(os.path.join(OUTPUT_DIR, "labels", "val"), exist_ok=True)
-# except OSError as e:
-#     print(f"Error creating directories: {e}")
-
-# # Step 3: Load image and label files
-# all_images = [f for f in os.listdir(IMAGES_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
-# random.shuffle(all_images)
-# split_index = int(len(all_images) * TRAIN_RATIO)
-# train_images = all_images[:split_index]
-# val_images = all_images[split_index:]
-
-# # Step 4: Organize data into train and validation sets
-# def copy_files(image_files, split):
-#     for img_file in image_files:
-#         try:
-#             # Copy image
-#             src_img_path = os.path.join(IMAGES_DIR, img_file)
-#             dst_img_path = os.path.join(OUTPUT_DIR, "images", split, img_file)
-#             shutil.copy(src_img_path, dst_img_path)
-            
-#             # Copy corresponding label
-#             label_file = os.path.splitext(img_file)[0] + ".txt"
-#             src_label_path = os.path.join(LABELS_DIR, label_file)
-#             dst_label_path = os.path.join(OUTPUT_DIR, "labels", split, label_file)
-#             shutil.copy(src_label_path, dst_label_path)
-#         except Exception as e:
-#             print(f"Error processing file {img_file}: {e}")
-
-# copy_files(train_images, "train")
-# copy_files(val_images, "val")
-
-# print("Dataset organization complete!")
-
-# # Step 5: Create dataset configuration file
-# dataset_config = f"""
-# train: {os.path.abspath(os.path.join(OUTPUT_DIR, 'images', 'train'))}
-# val: {os.path.abspath(os.path.join(OUTPUT_DIR, 'images', 'val'))}
-
-# nc: {len(CLASS_NAMES)}  # Number of classes
-# names: {CLASS_NAMES}    # Class names
-# """
-
-# with open(os.path.join(OUTPUT_DIR, "dataset.yaml"), "w") as f:
-#     f.write(dataset_config)
-
-# print("Dataset configuration file created!")
-
 import os
 import random
 import shutil
@@ -88,7 +8,14 @@ def select_directory(title):
     """Open a dialog to select a directory."""
     root = Tk()
     root.withdraw()  # Hide the main tkinter window
+    
+    # Ensure the dialog appears on top
+    root.attributes('-topmost', True)
+    root.lift()
+    
     directory = filedialog.askdirectory(title=title)
+    root.destroy()  # Explicitly destroy the root window after selection
+    
     if not directory:
         raise ValueError("No directory selected. Exiting.")
     return directory
@@ -164,7 +91,8 @@ for class_id, (class_name, images_dir, labels_dir) in enumerate(CLASS_FOLDERS):
             updated_lines.append(updated_line)
         
         # Write the updated label file to a temporary location
-        temp_label_path = os.path.join(labels_dir, f"temp_{label_file}")
+        temp_label_path = os.path.join(OUTPUT_DIR, "temp_labels", label_file)
+        os.makedirs(os.path.dirname(temp_label_path), exist_ok=True)
         with open(temp_label_path, "w") as f:
             f.writelines(updated_lines)
         
@@ -189,7 +117,7 @@ def copy_files(image_files, split):
             
             # Copy corresponding label
             label_file = os.path.splitext(img_file)[0] + ".txt"
-            src_label_path = os.path.join(src_img_dir.replace("images", "labels"), f"temp_{label_file}")
+            src_label_path = os.path.join(OUTPUT_DIR, "temp_labels", label_file)
             dst_label_path = os.path.join(OUTPUT_DIR, "labels", split, label_file)
             shutil.copy(src_label_path, dst_label_path)
         except Exception as e:
@@ -197,6 +125,9 @@ def copy_files(image_files, split):
 
 copy_files(train_images, "train")
 copy_files(val_images, "val")
+
+# Clean up temporary label files
+shutil.rmtree(os.path.join(OUTPUT_DIR, "temp_labels"), ignore_errors=True)
 
 print("Dataset organization complete!")
 
