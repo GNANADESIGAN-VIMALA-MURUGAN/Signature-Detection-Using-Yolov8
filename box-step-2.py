@@ -8,6 +8,7 @@ ix, iy = -1, -1
 boxes = []
 class_id = None
 
+
 def draw_rectangle(event, x, y, flags, param):
     global ix, iy, drawing, boxes
 
@@ -15,40 +16,46 @@ def draw_rectangle(event, x, y, flags, param):
         drawing = True
         ix, iy = x, y
 
-    elif event == cv2.EVENT_MOUSEMOVE and drawing:
-        temp_image = param.copy()
-        cv2.rectangle(temp_image, (ix, iy), (x, y), (0, 0, 255), 2)
-        cv2.imshow("Draw Bounding Boxes", temp_image)
+    elif event == cv2.EVENT_MOUSEMOVE:
+        if drawing:
+            temp_image = param["display_image"].copy()
+            cv2.rectangle(temp_image, (ix, iy), (x, y), (0, 0, 255), 2)
+            cv2.imshow("Draw Bounding Boxes", temp_image)
 
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
-        x1, y1 = min(ix, x), min(iy, y)
-        x2, y2 = max(ix, x), max(iy, y)
+        # Scale the bounding box back to the original image size
+        scale_x = param["original_width"] / param["display_width"]
+        scale_y = param["original_height"] / param["display_height"]
+        original_box = (
+            int(ix * scale_x),
+            int(iy * scale_y),
+            int(x * scale_x),
+            int(y * scale_y),
+        )
+        boxes.append(original_box)
+        cv2.rectangle(param["display_image"], (ix, iy), (x, y), (0, 0, 255), 2)
+        cv2.imshow("Draw Bounding Boxes", param["display_image"])
 
-        if x1 != x2 and y1 != y2:  # Ensure valid box
-            boxes.append((x1, y1, x2, y2))
-            cv2.rectangle(param, (x1, y1), (x2, y2), (0, 0, 255), 2)
-            cv2.imshow("Draw Bounding Boxes", param)
 
 def save_labels_to_txt(image_name, boxes, output_folder, image_width, image_height, class_id):
     output_file = os.path.join(output_folder, f"{os.path.splitext(image_name)[0]}.txt")
     with open(output_file, 'w') as f:
         for box in boxes:
             x1, y1, x2, y2 = box
-            width = abs(x2 - x1) / image_width
-            height = abs(y2 - y1) / image_height
-            x_center = ((x1 + x2) / 2.0) / image_width
-            y_center = ((y1 + y2) / 2.0) / image_height
-
-            if width > 0 and height > 0:  # Ensure valid box
-                f.write(f"{class_id} {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}\n")
-    
+            x_center = ((x1 + x2) / 2) / image_width
+            y_center = ((y1 + y2) / 2) / image_height
+            width = (x2 - x1) / image_width
+            height = (y2 - y1) / image_height
+            f.write(f"{class_id} {x_center} {y_center} {width} {height}\n")
     print(f"Labels saved to: {output_file}")
+
 
 def upload_folder():
     Tk().withdraw()
     folder_path = askdirectory(title="Select Folder Containing Images")
     return folder_path
+
 
 def main():
     global class_id
@@ -76,25 +83,50 @@ def main():
 
     for image_file in image_files:
         image_path = os.path.join(folder_path, image_file)
-        image = cv2.imread(image_path)
-        if image is None:
+        original_image = cv2.imread(image_path)
+        if original_image is None:
             print(f"Error: Could not load {image_file}. Skipping.")
             continue
+
+        # Resize the image for display
+        max_display_width = 1280
+        max_display_height = 720
+        original_height, original_width = original_image.shape[:2]
+        scale_x = original_width / max_display_width
+        scale_y = original_height / max_display_height
+        scale = max(scale_x, scale_y)
+        if scale > 1:
+            display_width = int(original_width / scale)
+            display_height = int(original_height / scale)
+        else:
+            display_width, display_height = original_width, original_height
+
+        display_image = cv2.resize(original_image, (display_width, display_height))
 
         global boxes
         boxes = []
         cv2.namedWindow("Draw Bounding Boxes")
-        cv2.setMouseCallback("Draw Bounding Boxes", draw_rectangle, param=image)
+        cv2.setMouseCallback(
+            "Draw Bounding Boxes",
+            draw_rectangle,
+            param={
+                "display_image": display_image,
+                "original_width": original_width,
+                "original_height": original_height,
+                "display_width": display_width,
+                "display_height": display_height,
+            },
+        )
 
         print(f"Annotating: {image_file}. Draw rectangles using your mouse. Press 's' to save or 'q' to skip.")
         while True:
-            cv2.imshow("Draw Bounding Boxes", image)
+            cv2.imshow("Draw Bounding Boxes", display_image)
             key = cv2.waitKey(1) & 0xFF
 
             if key == ord('s'):
-                height, width = image.shape[:2]
-                save_labels_to_txt(image_file, boxes, labels_folder, width, height, class_id)
+                save_labels_to_txt(image_file, boxes, labels_folder, original_width, original_height, class_id)
                 break
+
             elif key == ord('q'):
                 print(f"Skipped: {image_file}")
                 break
@@ -102,6 +134,7 @@ def main():
         cv2.destroyAllWindows()
 
     print("Annotation completed for all images in the folder.")
+
 
 if __name__ == "__main__":
     main()
