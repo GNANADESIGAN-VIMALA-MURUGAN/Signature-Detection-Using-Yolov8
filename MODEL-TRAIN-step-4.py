@@ -6,9 +6,12 @@ def select_file(title, filetypes):
     """Open a dialog to select a single file."""
     root = Tk()
     root.withdraw()  # Hide the main tkinter window
+    root.lift()  # Bring the root window to the front
+    root.attributes('-topmost', True)  # Ensure the window is on top
     file_path = filedialog.askopenfilename(title=title, filetypes=filetypes)
     if not file_path:
         print("No file selected. Skipping...")
+    root.destroy()  # Destroy the hidden root window after selection
     return file_path
 
 print("You will now be prompted to select dataset.yaml files one by one.")
