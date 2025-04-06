@@ -11,10 +11,21 @@ model_path = ""
 # Step 2: Function to load the YOLOv8 model
 def select_model():
     global model, model_path
+
+    # Bring the main window to the front
+    root.lift()
+    root.attributes('-topmost', True)
+    root.focus_force()  # Force focus on the main window
+
+    # Open file dialog
     file_path = filedialog.askopenfilename(
         title="Select Model File",
         filetypes=[("Model Files", "*.pt"), ("All Files", "*.*")]
     )
+
+    # Reset the topmost attribute after the dialog
+    root.attributes('-topmost', False)
+
     if not file_path:
         return  # User canceled the file dialog
 
@@ -22,9 +33,19 @@ def select_model():
         # Load the selected model
         model = YOLO(file_path)
         model_path = file_path
+
+        # Show success message box and ensure it stays on top
+        root.lift()
+        root.attributes('-topmost', True)
         messagebox.showinfo("Success", f"Model loaded successfully: {file_path}")
+        root.attributes('-topmost', False)
     except Exception as e:
+        # Show error message box and ensure it stays on top
+        root.lift()
+        root.attributes('-topmost', True)
         messagebox.showerror("Error", f"Failed to load model: {e}")
+        root.attributes('-topmost', False)
+
 
 # Step 3: Function to perform object detection
 def detect_objects(image_path):
@@ -60,19 +81,38 @@ def detect_objects(image_path):
         return image_rgb
 
     except Exception as e:
+        # Show error message box and ensure it stays on top
+        root.lift()
+        root.attributes('-topmost', True)
         messagebox.showerror("Error", f"An error occurred: {e}")
+        root.attributes('-topmost', False)
         return None
+
 
 # Step 4: Function to handle image selection and display results
 def open_image():
     if model is None:
+        # Show warning message box and ensure it stays on top
+        root.lift()
+        root.attributes('-topmost', True)
         messagebox.showwarning("Warning", "Please select a model before opening an image.")
+        root.attributes('-topmost', False)
         return
 
+    # Bring the main window to the front
+    root.lift()
+    root.attributes('-topmost', True)
+    root.focus_force()  # Force focus on the main window
+
+    # Open file dialog
     file_path = filedialog.askopenfilename(
         title="Select Image File",
         filetypes=[("Image Files", "*.jpg *.jpeg *.png *.bmp"), ("All Files", "*.*")]
     )
+
+    # Reset the topmost attribute after the dialog
+    root.attributes('-topmost', False)
+
     if not file_path:
         return  # User canceled the file dialog
 
@@ -88,6 +128,7 @@ def open_image():
     # Update the GUI to display the image
     result_label.config(image=image_tk)
     result_label.image = image_tk  # Keep a reference to avoid garbage collection
+
 
 # Step 5: Create the GUI
 root = tk.Tk()
